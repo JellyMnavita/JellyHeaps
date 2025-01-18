@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualisateur de Tas</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #007BFF;
+        }
+
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .tas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .noeud {
+            width: 50px;
+            height: 50px;
+            background: #007BFF;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            margin: 5px;
+            font-weight: bold;
+        }
+
+        .niveau-arbre {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .controle {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        /* Styles de la modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 1s ease, visibility 1s ease;
+        }
+
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="modalBienvenue" class="modal">
+        <div class="modal-content">
+            <h2>Bienvenue sur le Visualisateur de Tas !</h2>
+            <p>Explorez vos données avec des structures Max-Tas et Min-Tas.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Visualisateur de Tas</h1>
+        <div class="controle">
+            <input id="listeEntree" type="text" placeholder="Entrez des nombres séparés par des espaces">
+            <button onclick="initialiserTas()">Construire les tas</button>
+            <button onclick="ajouterValeur()">Ajouter une valeur</button>
+            <input id="nouvelleValeur" type="text" placeholder="Nouvelle valeur">
+        </div>
+        <h2>Max-Tas</h2>
+        <div id="maxTas" class="tas-container"></div>
+        <h2>Min-Tas</h2>
+        <div id="minTas" class="tas-container"></div>
+    </div>
+
+    <footer>
+        &copy; 2025 Jelly. Tous droits réservés.
+    </footer>
+
+    <script>
+        // Afficher la modal avec animation
+        window.onload = () => {
+            const modalBienvenue = document.getElementById("modalBienvenue");
+            modalBienvenue.classList.add("show");
+
+            // Masquer la modal après 3 secondes
+            setTimeout(() => {
+                modalBienvenue.classList.remove("show");
+            }, 3000);
+        };
+
+        function heapify(arr, n, i, isMaxHeap) {
+            let extreme = i;
+            const gauche = 2 * i + 1;
+            const droite = 2 * i + 2;
+
+            if (gauche < n && (isMaxHeap ? arr[gauche] > arr[extreme] : arr[gauche] < arr[extreme])) {
+                extreme = gauche;
+            }
+            if (droite < n && (isMaxHeap ? arr[droite] > arr[extreme] : arr[droite] < arr[extreme])) {
+                extreme = droite;
+            }
+
+            if (extreme !== i) {
+                [arr[i], arr[extreme]] = [arr[extreme], arr[i]];
+                heapify(arr, n, extreme, isMaxHeap);
+            }
+        }
+
+        function construireTas(arr, isMaxHeap) {
+            const n = arr.length;
+            for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+                heapify(arr, n, i, isMaxHeap);
+            }
+        }
+
+        function afficherTas(containerId, tas) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+
+            let niveau = 0;
+            let noeudsParNiveau = 1;
+            let index = 0;
+
+            while (index < tas.length) {
+                const niveauContainer = document.createElement("div");
+                niveauContainer.className = "niveau-arbre";
+
+                for (let i = 0; i < noeudsParNiveau && index < tas.length; i++, index++) {
+                    const noeud = document.createElement("div");
+                    noeud.className = "noeud";
+                    noeud.textContent = tas[index];
+                    niveauContainer.appendChild(noeud);
+                }
+
+                container.appendChild(niveauContainer);
+                niveau++;
+                noeudsParNiveau *= 2;
+            }
+        }
+
+        function initialiserTas() {
+            const entree = document.getElementById("listeEntree").value;
+            const arr = entree.split(" ").map(Number);
+
+            const maxTas = [...arr];
+            const minTas = [...arr];
+
+            construireTas(maxTas, true);
+            construireTas(minTas, false);
+
+            afficherTas("maxTas", maxTas);
+            afficherTas("minTas", minTas);
+        }
+
+        function ajouterValeur() {
+            const nouvelleValeur = Number(document.getElementById("nouvelleValeur").value);
+            if (isNaN(nouvelleValeur)) {
+                alert("Veuillez entrer un nombre valide.");
+                return;
+            }
+
+            const entree = document.getElementById("listeEntree").value;
+            let arr = entree.split(" ").map(Number);
+            arr.push(nouvelleValeur);
+
+            document.getElementById("listeEntree").value = arr.join(" ");
+
+            initialiserTas();
+        }
+    </script>
+</body>
+</html>
